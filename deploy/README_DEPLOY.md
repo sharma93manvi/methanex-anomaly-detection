@@ -81,12 +81,12 @@ gcloud compute instances describe instance-20260218-062354 \
 
 ## Subdomain shows IP in the browser URL
 
-If you use a subdomain (e.g. **http://gc-team4.themanvisharma.com/**) but the browser address bar shows **http://35.233.130.33/** instead, the cause is almost always **DNS/hosting configuration**, not the server.
+If you use a subdomain (e.g. **http://gcp-team4.themanvisharma.com/**) but the browser address bar shows **http://35.233.130.33/** instead, the cause is almost always **DNS/hosting configuration**, not the server.
 
 - **Wrong:** A **URL redirect** (forwarding) from the subdomain to the IP. The provider returns `301/302 Location: http://35.233.130.33/`, so the browser follows it and shows the IP.
-- **Correct:** An **A record** so the subdomain resolves to the same IP but no redirect is sent. The browser then connects with `Host: gc-team4.themanvisharma.com`, and the URL stays as the subdomain.
+- **Correct:** An **A record** so the subdomain resolves to the same IP but no redirect is sent. The browser then connects with `Host: gcp-team4.themanvisharma.com`, and the URL stays as the subdomain.
 
-**Fix:** In your DNS provider for **themanvisharma.com**, remove any "URL redirect" or "forwarding" for **gc-team4** and add an **A record**: host `gc-team4`, value `35.233.130.33`. After DNS propagates, **http://gc-team4.themanvisharma.com/** should keep the subdomain in the URL. Nginx on the server is already configured to serve the app for that host and redirect direct IP access to the subdomain.
+**Fix:** In your DNS provider for **themanvisharma.com**, remove any "URL redirect" or "forwarding" for **gcp-team4** and add an **A record**: host `gcp-team4`, value `35.233.130.33`. After DNS propagates, **http://gcp-team4.themanvisharma.com/** should keep the subdomain in the URL. Nginx on the server is already configured to serve the app for that host and redirect direct IP access to the subdomain.
 
 ## Restarting Streamlit on the VM
 

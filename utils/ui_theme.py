@@ -110,6 +110,37 @@ def get_css_theme():
         box-shadow: 0 8px 16px rgba(30, 58, 138, 0.15);
     }}
     
+    /* Large hero-style cards (e.g. home page options) */
+    .methanex-card.methanex-card-hero {{
+        padding: 3rem 2rem;
+    }}
+    .methanex-card .card-title {{
+        color: {COLORS['primary']};
+        margin-bottom: 1rem;
+        font-size: 1.5rem;
+    }}
+    .methanex-card .card-desc {{
+        color: {COLORS['text_secondary']};
+        font-size: 1.1rem;
+        margin-bottom: 2rem;
+    }}
+    .methanex-card .card-features {{
+        font-size: 0.9rem;
+        color: {COLORS['text_secondary']};
+    }}
+    @media (max-width: 480px) {{
+        .methanex-card .card-title {{
+            font-size: 1.25rem;
+        }}
+        .methanex-card .card-desc {{
+            font-size: 1rem;
+            margin-bottom: 1.5rem;
+        }}
+        .methanex-card .card-features {{
+            font-size: 0.85rem;
+        }}
+    }}
+    
     /* Button Styles */
     .methanex-button-primary {{
         background: linear-gradient(135deg, {COLORS['primary']} 0%, {COLORS['secondary']} 100%);
@@ -264,13 +295,93 @@ def get_css_theme():
         opacity: 0.9;
     }}
     
-    /* Responsive Design */
+    /* ========== Mobile & cross-device responsive ========== */
+    /* Prevent horizontal overflow on all devices */
+    html, body, .stApp, [data-testid="stAppViewContainer"], .main .block-container {{
+        max-width: 100vw;
+        overflow-x: hidden;
+        box-sizing: border-box;
+    }}
+    /* Allow long text and alerts to wrap on small screens */
+    .methanex-alert, .stMarkdown p, .stMarkdown li {{
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+    }}
+    * {{
+        box-sizing: border-box;
+    }}
+    /* Smooth touch scrolling on iOS */
+    .stApp {{
+        -webkit-overflow-scrolling: touch;
+    }}
+    /* Stack Streamlit columns on tablet and mobile */
+    @media (max-width: 1024px) {{
+        [data-testid="column"] {{
+            min-width: 100% !important;
+            flex: 1 1 100% !important;
+        }}
+        /* Streamlit horizontal block: allow flex wrap */
+        [data-testid="stHorizontalBlock"] {{
+            flex-wrap: wrap !important;
+        }}
+    }}
     @media (max-width: 768px) {{
+        .main .block-container {{
+            padding-left: 1rem;
+            padding-right: 1rem;
+            max-width: 100%;
+        }}
         .hero-title {{
-            font-size: 2rem;
+            font-size: 1.75rem;
         }}
         .hero-subtitle {{
-            font-size: 1rem;
+            font-size: 0.95rem;
+        }}
+        .hero-section {{
+            padding: 2rem 1rem;
+        }}
+        .methanex-card {{
+            padding: 1.25rem;
+        }}
+        .methanex-card.methanex-card-hero {{
+            padding: 2rem 1rem;
+        }}
+        /* Touch-friendly tap targets (min 44px) */
+        button, [role="button"], .stButton > button {{
+            min-height: 44px;
+            min-width: 44px;
+        }}
+    }}
+    @media (max-width: 480px) {{
+        .hero-title {{
+            font-size: 1.4rem;
+        }}
+        .hero-subtitle {{
+            font-size: 0.875rem;
+        }}
+        .hero-section {{
+            padding: 1.5rem 0.75rem;
+        }}
+        .methanex-card {{
+            padding: 1rem;
+        }}
+        .methanex-card.methanex-card-hero {{
+            padding: 1.5rem 0.75rem;
+        }}
+        .severity-badge {{
+            padding: 0.35rem 0.75rem;
+            font-size: 0.8rem;
+        }}
+    }}
+    /* Scrollable data/table containers on small screens */
+    @media (max-width: 768px) {{
+        [data-testid="stDataFrame"], [data-testid="stDataFrameResizable"] {{
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }}
+        .stPlotlyChart {{
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
         }}
     }}
     </style>

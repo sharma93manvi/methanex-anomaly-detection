@@ -84,14 +84,12 @@ col1, col2 = st.columns(2, gap="large")
 
 with col1:
     st.markdown("""
-    <div class="methanex-card fade-in" style="text-align: center; padding: 3rem 2rem; cursor: pointer;" 
-         onmouseover="this.style.transform='translateY(-6px)'; this.style.boxShadow='0 12px 24px rgba(30, 58, 138, 0.2)';"
-         onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 1px 3px rgba(0, 0, 0, 0.1)';">
-        <h2 style="color: #1E3A8A; margin-bottom: 1rem;">Upload Sensor Data</h2>
-        <p style="color: #6B7280; font-size: 1.1rem; margin-bottom: 2rem;">
+    <div class="methanex-card methanex-card-hero fade-in card-touch" style="text-align: center; cursor: pointer;">
+        <h2 class="card-title">Upload Sensor Data</h2>
+        <p class="card-desc">
             Upload hourly sensor data files and get comprehensive anomaly predictions
         </p>
-        <div style="font-size: 0.9rem; color: #6B7280;">
+        <div class="card-features">
             Anomaly Timing Prediction<br>
             Lead Time Analysis<br>
             Severity Classification<br>
@@ -107,14 +105,12 @@ with col1:
 
 with col2:
     st.markdown("""
-    <div class="methanex-card fade-in" style="text-align: center; padding: 3rem 2rem; cursor: pointer;"
-         onmouseover="this.style.transform='translateY(-6px)'; this.style.boxShadow='0 12px 24px rgba(30, 58, 138, 0.2)';"
-         onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 1px 3px rgba(0, 0, 0, 0.1)';">
-        <h2 style="color: #1E3A8A; margin-bottom: 1rem;">View Mock Stream</h2>
-        <p style="color: #6B7280; font-size: 1.1rem; margin-bottom: 2rem;">
+    <div class="methanex-card methanex-card-hero fade-in card-touch" style="text-align: center; cursor: pointer;">
+        <h2 class="card-title">View Mock Stream</h2>
+        <p class="card-desc">
             View real-time streaming sensor data with live predictions
         </p>
-        <div style="font-size: 0.9rem; color: #6B7280;">
+        <div class="card-features">
             Real-time Data Streaming<br>
             Live Anomaly Detection<br>
             Instant Predictions<br>

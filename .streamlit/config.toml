@@ -1,0 +1,8 @@
+# When headless is set here (not via CLI), browser.serverAddress is not overridden by Streamlit.
+[server]
+headless = true
+
+# Tell Streamlit which address/port to show in the browser when behind a reverse proxy.
+[browser]
+serverAddress = "gc-team4.themanvisharma.com"
+serverPort = 80

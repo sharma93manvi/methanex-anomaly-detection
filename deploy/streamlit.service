@@ -1,0 +1,15 @@
+[Unit]
+Description=Streamlit Anomaly Detection App
+After=network.target
+
+[Service]
+Type=simple
+User=manvisharma
+WorkingDirectory=/home/manvisharma/app
+Environment=PATH=/home/manvisharma/app/venv/bin
+ExecStart=/home/manvisharma/app/venv/bin/streamlit run app.py --server.address 127.0.0.1 --server.port 8501
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

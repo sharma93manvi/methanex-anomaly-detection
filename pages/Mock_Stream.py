@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 import time
 from pathlib import Path
 
-from utils.ui_theme import get_css_theme, get_severity_badge_html, SEVERITY_COLORS
+from utils.ui_theme import get_css_theme, get_severity_badge_html, get_recommendation_card_html, SEVERITY_COLORS
 from utils.mock_stream_generator import MockStreamGenerator
 from utils.recommendations_engine import generate_recommendations
 from utils.agent_service import get_api_key, stream_gemini_response
@@ -254,13 +254,26 @@ if st.session_state.streaming_active:
                         'timing': timing_pred, 'lead_time': lead_time_pred, 'severity': severity,
                         'root_cause': root_cause, 'recommendations': recommendations
                     }
-                    st.session_state.stream_last_predictions = st.session_state.stream_pause_snapshot
-                    st.session_state.stream_last_processed_data = sd
-                    st.session_state.streaming_active = False
-                    st.session_state.stream_paused_for_anomaly = True
-                    st.rerun()
-                except Exception:
-                    pass  # continue streaming if snapshot fails
+                except Exception as e:
+                    # Always pause on anomaly; use minimal snapshot if full build failed
+                    latest_score = sd['anomaly_score_combined'].iloc[-1] if 'anomaly_score_combined' in sd.columns else 0.0
+                    severity = classify_severity(latest_score)
+                    st.session_state.stream_pause_snapshot = {
+                        'timing': {'confidence': 0.0, 'predicted_timestamp': None},
+                        'lead_time': {'predicted_lead_time_hours': None, 'confidence': 0.0},
+                        'severity': severity,
+                        'root_cause': {},
+                        'recommendations': [{'title': 'Investigate anomaly', 'priority': severity.get('severity_level', 'Medium'), 'description': 'Anomaly detected. Full analysis unavailable.', 'timeline': 'As soon as possible', 'actions': []}]
+                    }
+                    if 'stream_pause_error' not in st.session_state:
+                        st.session_state.stream_pause_error = None
+                    st.session_state.stream_pause_error = str(e)
+                # Pause stream in all cases when anomaly detected
+                st.session_state.stream_last_predictions = st.session_state.stream_pause_snapshot
+                st.session_state.stream_last_processed_data = sd
+                st.session_state.streaming_active = False
+                st.session_state.stream_paused_for_anomaly = True
+                st.rerun()
         else:
             # Reset if we've streamed all data
             st.session_state.stream_index = 0
@@ -386,12 +399,13 @@ if st.session_state.streaming_active:
                     st.session_state.stream_last_predictions['root_cause'] = root_cause
                     st.session_state.stream_last_predictions['recommendations'] = recommendations
                     st.markdown("### Recommended Actions")
-                    for i, rec in enumerate(recommendations[:3], 1):  # Show top 3
-                        st.markdown(f"""
-                        **{i}. {rec['title']}** ({rec['priority']} Priority)
-                        - {rec['description']}
-                        - Timeline: {rec['timeline']}
-                        """)
+                    for i, rec in enumerate(recommendations[:3], 1):
+                        card_html = get_recommendation_card_html(rec, i, include_actions=False)
+                        st.markdown(card_html, unsafe_allow_html=True)
+                        if rec.get('actions'):
+                            with st.expander("Steps to take"):
+                                for action in rec['actions']:
+                                    st.markdown(f"- {action}")
             except Exception:
                 pass
     
@@ -498,6 +512,9 @@ else:
     # Paused due to anomaly: show prediction and recommendations
     if st.session_state.stream_paused_for_anomaly and st.session_state.stream_pause_snapshot:
         snap = st.session_state.stream_pause_snapshot
+        if getattr(st.session_state, 'stream_pause_error', None):
+            st.warning(f"Stream paused for anomaly. Some analysis failed: {st.session_state.stream_pause_error}")
+            st.session_state.stream_pause_error = None  # clear after showing once
         st.markdown("### Prediction Around Anomaly")
         
         col1, col2 = st.columns(2)
@@ -517,13 +534,16 @@ else:
         
         st.markdown("### Recommended Actions")
         recommendations = snap.get('recommendations') or []
-        for i, rec in enumerate(recommendations, 1):
-            st.markdown(f"**{i}. {rec['title']}** ({rec['priority']} Priority)")
-            st.markdown(f"- {rec['description']}")
-            st.markdown(f"- Timeline: {rec['timeline']}")
-            for action in rec.get('actions', []):
-                st.markdown(f"  - {action}")
-        
+        if recommendations:
+            rec_cols = st.columns(2)
+            for i, rec in enumerate(recommendations, 1):
+                with rec_cols[(i - 1) % 2]:
+                    card_html = get_recommendation_card_html(rec, i, include_actions=False)
+                    st.markdown(card_html, unsafe_allow_html=True)
+                    if rec.get('actions'):
+                        with st.expander("Steps to take"):
+                            for action in rec['actions']:
+                                st.markdown(f"- {action}")
         st.info("Click **Start Stream** above to run a new stream.")
     
     # Static view when not streaming (and not paused)

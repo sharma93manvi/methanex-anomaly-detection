@@ -28,17 +28,18 @@ def generate_recommendations(prediction_results, severity_level, root_cause, lea
     
     # If we have future prediction but low severity, still generate recommendations
     if has_future_prediction and severity_level == 'Low':
+        lead_display = lead_time_hours if lead_time_hours is not None else 24
         recommendations.append({
             'priority': 'Medium',
             'title': 'Proactive Monitoring Recommended',
-            'description': f'Early warning indicators detected. Anomaly predicted in {lead_time_hours:.1f} hours if current trends continue.',
+            'description': f'Early warning indicators detected. Anomaly predicted in {lead_display:.1f} hours if current trends continue.',
             'actions': [
                 'Increase monitoring frequency for key sensors',
                 'Review sensor calibration and maintenance schedules',
                 'Prepare maintenance resources',
                 'Document current operating conditions'
             ],
-            'timeline': f'Within {int(lead_time_hours) if lead_time_hours else 24} hours'
+            'timeline': f'Within {int(lead_display)} hours'
         })
     
     # Severity-based recommendations

@@ -56,6 +56,24 @@ The system maintains modular Python files for production use:
 
 ### Prerequisites
 
+**Recommended: use a virtual environment** so TensorFlow and other dependencies are isolated. From the project root:
+
+```bash
+# Create and activate virtual environment
+python3 -m venv .venv
+source .venv/bin/activate   # On Windows: .venv\Scripts\activate
+
+# Install dependencies
+pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+On Apple Silicon Macs, if TensorFlow fails or crashes, use: `pip install tensorflow-macos tensorflow-metal`.
+
+To use this environment in Jupyter: `pip install ipykernel` then `python -m ipykernel install --user --name=anomaly-detection --display-name="Python (Anomaly Detection)"`, and select that kernel in the notebook. See **docs/TENSORFLOW_MAC_SETUP.md** for full TensorFlow setup.
+
+**Without a venv** (use the same Python that runs your notebook):
+
 ```bash
 pip install -r requirements.txt
 ```
@@ -68,8 +86,10 @@ pip install -r requirements.txt
 
 ### Running the Production Pipeline
 
+From the project root (with your virtual environment activated):
+
 ```bash
-python main.py
+PYTHONPATH=. python src/main.py
 ```
 
 ## Pipeline Steps

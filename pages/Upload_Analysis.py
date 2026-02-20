@@ -12,7 +12,7 @@ import plotly.graph_objects as go
 import plotly.express as px
 from datetime import datetime, timedelta
 
-from utils.ui_theme import get_css_theme, get_severity_badge_html, SEVERITY_COLORS
+from utils.ui_theme import get_css_theme, get_severity_badge_html, get_recommendation_card_html, SEVERITY_COLORS
 from src.model_manager import ModelManager
 from src.prediction_service import predict_anomaly_timing
 from src.lead_time_predictor import predict_lead_time
@@ -115,24 +115,42 @@ def _render_agent_chat(key_suffix="upload"):
 st.markdown("### Quick Test Files")
 st.markdown("Select a pre-generated test file to quickly test the system:")
 
+# Sensible display names for test files (filename -> label)
+TEST_FILE_LABELS = {
+    "normal_30days.csv": "Normal operation (30 days)",
+    "early_warning_30days.csv": "Early warning scenario (30 days)",
+    "high_severity_30days.csv": "High severity anomaly (30 days)",
+}
+
 # Resolve paths relative to project root (where app.py lives)
 _project_root = Path(__file__).resolve().parent.parent
 test_files_dir = _project_root / "test_data"
-test_files = []
 if test_files_dir.exists():
-    test_files = list(test_files_dir.glob("*.csv"))
-    test_file_names = [f.name for f in test_files]
+    # Deduplicate by path and sort for consistent order
+    seen = set()
+    test_files = []
+    for f in sorted(test_files_dir.glob("*.csv"), key=lambda p: p.name):
+        if f.resolve() not in seen:
+            seen.add(f.resolve())
+            test_files.append(f)
+    # Build options: [None] + list of (display_label, filename)
+    file_options = ["None"]
+    label_to_path = {"None": None}
+    for f in test_files:
+        label = TEST_FILE_LABELS.get(f.name, f.name)
+        file_options.append(label)
+        label_to_path[label] = f
     
-    if test_file_names:
-        selected_test = st.selectbox(
+    if len(file_options) > 1:
+        selected_label = st.selectbox(
             "Choose a test file:",
-            ["None"] + test_file_names,
+            file_options,
             key="test_file_selector"
         )
         
-        if selected_test != "None":
-            test_file_path = test_files_dir / selected_test
-            if st.button("Load Test File", key="load_test"):
+        if selected_label != "None":
+            test_file_path = label_to_path[selected_label]
+            if test_file_path and st.button("Load Test File", key="load_test"):
                 st.session_state.uploaded_file = str(test_file_path)
                 st.session_state.test_file_loaded = True
                 st.rerun()
@@ -174,9 +192,14 @@ with tab1:
         with st.expander("Preview Data", expanded=False):
             try:
                 if file_path:
-                    df_preview = pd.read_csv(file_path, nrows=10)
+                    path_obj = Path(file_path)
+                    if not path_obj.exists():
+                        path_obj = _project_root / "test_data" / path_obj.name
+                    df_preview = pd.read_csv(path_obj, nrows=10, encoding="utf-8")
+                    df_preview.columns = df_preview.columns.str.strip()
                 else:
                     df_preview = pd.read_csv(st.session_state.uploaded_file, nrows=10)
+                    df_preview.columns = df_preview.columns.str.strip()
                 st.dataframe(df_preview)
             except Exception as e:
                 st.error(f"Error reading file: {e}")
@@ -187,12 +210,24 @@ with tab1:
                 try:
                     # Load data (reset file position if file-like so we read full file after preview)
                     if file_path:
-                        df = pd.read_csv(file_path)
+                        path_obj = Path(file_path)
+                        if not path_obj.exists():
+                            # Resolve test_data path relative to project root (handles different cwd)
+                            fallback = _project_root / "test_data" / path_obj.name
+                            if fallback.exists():
+                                path_obj = fallback
+                            elif (_project_root / path_obj).exists():
+                                path_obj = _project_root / path_obj
+                            else:
+                                raise FileNotFoundError(f"File not found: {file_path}")
+                        df = pd.read_csv(path_obj, encoding="utf-8")
+                        df.columns = df.columns.str.strip()
                     else:
                         up = st.session_state.uploaded_file
                         if hasattr(up, 'seek'):
                             up.seek(0)
                         df = pd.read_csv(up)
+                        df.columns = df.columns.str.strip()
                     
                     # Ensure Timestamp column
                     if 'Timestamp' not in df.columns:
@@ -266,11 +301,16 @@ with tab1:
                         sensor_rankings
                     )
                     
-                    # Get latest severity
+                    # Severity from batch peak (max score), not just last row, so anomaly periods
+                    # in the middle of the file (e.g. high_severity_30days) are reflected correctly
+                    if 'anomaly_score_combined' in df_processed.columns:
+                        peak_score = float(df_processed['anomaly_score_combined'].max())
+                        latest_score = float(df_processed['anomaly_score_combined'].iloc[-1])
+                    else:
+                        peak_score = 0.0
+                        latest_score = 0.0
                     latest_severity = df_processed['severity_level'].iloc[-1] if 'severity_level' in df_processed.columns else 'Low'
-                    latest_score = df_processed['anomaly_score_combined'].iloc[-1] if 'anomaly_score_combined' in df_processed.columns else 0.0
-                    
-                    severity_result = classify_severity(latest_score)
+                    severity_result = classify_severity(peak_score)
                     
                     # Generate recommendations
                     recommendations = generate_recommendations(
@@ -340,8 +380,11 @@ with tab2:
         
         with col2:
             if has_future_prediction:
+                # Use lead_time predictor value, or fall back to timing prediction's lead_time_hours
                 lead_time = predictions['lead_time'].get('predicted_lead_time_hours')
-                if lead_time:
+                if lead_time is None:
+                    lead_time = predictions['timing'].get('lead_time_hours')
+                if lead_time is not None:
                     st.metric("Anomaly Predicted In", f"{lead_time:.1f} hours", delta="Future anomaly predicted", delta_color="off")
                 else:
                     st.metric("Anomaly Predicted In", "N/A")
@@ -439,8 +482,15 @@ with tab2:
             st.markdown("### Lead Time Prediction")
             
             lead_time = predictions['lead_time']
+            timing = predictions['timing']
+            has_lead_time_value = lead_time.get('predicted_lead_time_hours') is not None
+            has_timing_fallback = (
+                timing.get('lead_time_hours') is not None and
+                timing.get('predicted_timestamp') and
+                timing.get('confidence', 0) > 0.3
+            )
             
-            if lead_time.get('predicted_lead_time_hours'):
+            if has_lead_time_value:
                 col1, col2 = st.columns(2)
                 
                 with col1:
@@ -457,9 +507,33 @@ with tab2:
                 
                 with col2:
                     if lead_time.get('contributing_sensors'):
-                        st.markdown("**Contributing Sensors:**")
+                        st.markdown("**Early Warning Indicators (contributing sensors):**")
+                        st.caption("Sensors showing deviation that historically precede anomalies.")
                         for sensor in lead_time['contributing_sensors'][:5]:
                             st.markdown(f"- {sensor['sensor']}: {sensor.get('confidence', 0)*100:.1f}% confidence")
+                    else:
+                        st.info("No contributing sensors identified for this prediction.")
+            elif has_timing_fallback:
+                # Use timing prediction when lead_time predictor is empty (e.g. no sensor rankings)
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.metric(
+                        "Predicted Lead Time",
+                        f"{timing['lead_time_hours']:.1f} hours"
+                    )
+                    st.markdown(f"**Confidence:** {timing.get('confidence', 0)*100:.1f}%")
+                    st.markdown(f"**Source:** Anomaly Timing ({timing.get('method', 'forecasting').replace('_', ' ').title()} method)")
+                with col2:
+                    if timing.get('early_indicators'):
+                        st.markdown("**Early Warning Indicators:**")
+                        st.caption("Sensors with elevated deviation in recent data (from model's early-warning sensor list).")
+                        for ind in timing['early_indicators'][:5]:
+                            name = ind.get('sensor', 'Unknown')
+                            dev = ind.get('deviation', 0)
+                            st.markdown(f"- {name}: {dev:.2f}σ deviation")
+                    else:
+                        st.markdown("**Early indicators:**")
+                        st.caption("Identified from the model's ranked early-warning sensors when they show deviation in the current data. None flagged for this run; lead time is from trend/forecasting.")
             else:
                 st.info("No lead time prediction available.")
         
@@ -504,13 +578,21 @@ with tab2:
             recommendations = predictions['recommendations']
             
             if recommendations:
+                # Compact card grid: 2 columns so users can scan without long scroll
+                n = len(recommendations)
+                cols = st.columns(2)
                 for i, rec in enumerate(recommendations, 1):
-                    with st.expander(f"**{i}. {rec['title']}** ({rec['priority']} Priority)", expanded=(i==1)):
-                        st.markdown(f"**Description:** {rec['description']}")
-                        st.markdown(f"**Timeline:** {rec['timeline']}")
-                        st.markdown("**Actions:**")
-                        for action in rec['actions']:
-                            st.markdown(f"- {action}")
+                    col = cols[(i - 1) % 2]
+                    with col:
+                        # Card summary (no actions in HTML to keep it short)
+                        card_html = get_recommendation_card_html(rec, i, include_actions=False)
+                        st.markdown(card_html, unsafe_allow_html=True)
+                        # Actions in expander so main view stays compact
+                        actions = rec.get('actions') or []
+                        if actions:
+                            with st.expander("Steps to take", expanded=(i == 1 and n <= 4)):
+                                for action in actions:
+                                    st.markdown(f"- {action}")
             else:
                 if not has_current_anomalies and not has_future_prediction:
                     st.info("""

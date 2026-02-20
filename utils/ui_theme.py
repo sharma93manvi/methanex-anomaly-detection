@@ -231,6 +231,66 @@ def get_css_theme():
         animation: pulse 2s infinite;
     }}
     
+    /* Recommendation cards – compact, scannable */
+    .rec-card {{
+        background: {COLORS['card']};
+        border-radius: 10px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        border-left: 4px solid {COLORS['border']};
+        animation: fadeIn 0.35s ease-out;
+    }}
+    .rec-card.rec-priority-critical {{ border-left-color: {COLORS['critical']}; }}
+    .rec-card.rec-priority-high {{ border-left-color: {COLORS['error']}; }}
+    .rec-card.rec-priority-medium {{ border-left-color: {COLORS['warning']}; }}
+    .rec-card.rec-priority-low {{ border-left-color: {COLORS['success']}; }}
+    .rec-card-header {{
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        margin-bottom: 0.5rem;
+    }}
+    .rec-title {{
+        font-weight: 600;
+        color: {COLORS['text_primary']};
+        font-size: 1rem;
+        margin: 0;
+    }}
+    .rec-priority-badge {{
+        display: inline-block;
+        padding: 0.2rem 0.6rem;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }}
+    .rec-priority-badge.critical {{ background: rgba(153, 27, 27, 0.15); color: {COLORS['critical']}; }}
+    .rec-priority-badge.high {{ background: rgba(239, 68, 68, 0.15); color: {COLORS['error']}; }}
+    .rec-priority-badge.medium {{ background: rgba(245, 158, 11, 0.15); color: {COLORS['warning']}; }}
+    .rec-priority-badge.low {{ background: rgba(16, 185, 129, 0.15); color: {COLORS['success']}; }}
+    .rec-desc {{
+        color: {COLORS['text_secondary']};
+        font-size: 0.9rem;
+        line-height: 1.4;
+        margin: 0 0 0.5rem 0;
+    }}
+    .rec-timeline {{
+        font-size: 0.8rem;
+        color: {COLORS['primary']};
+        font-weight: 500;
+    }}
+    .rec-actions-list {{
+        margin: 0.5rem 0 0 0;
+        padding-left: 1.2rem;
+        font-size: 0.85rem;
+        color: {COLORS['text_secondary']};
+        line-height: 1.5;
+    }}
+    .rec-actions-list li {{
+        margin-bottom: 0.25rem;
+    }}
+    
     /* Loading Spinner */
     .methanex-spinner {{
         border: 3px solid rgba(30, 58, 138, 0.1);
@@ -404,4 +464,50 @@ def _hex_to_rgb(hex_color):
     """Convert hex color to RGB tuple"""
     hex_color = hex_color.lstrip('#')
     return ','.join(str(int(hex_color[i:i+2], 16)) for i in (0, 2, 4))
+
+
+# Priority badge for recommendations (Critical, High, Medium, Low)
+PRIORITY_COLORS = {
+    'Critical': COLORS['critical'],
+    'High': COLORS['error'],
+    'Medium': COLORS['warning'],
+    'Low': COLORS['success'],
+}
+
+
+def get_priority_badge_html(priority):
+    """Return HTML for a recommendation priority badge."""
+    p = (priority or 'Medium').lower()
+    return f'<span class="rec-priority-badge {p}">{priority}</span>'
+
+
+def get_recommendation_card_html(rec, index, include_actions=True):
+    """
+    Return HTML for one recommendation card (compact, scannable).
+    rec: dict with title, priority, description, timeline, actions (list)
+    index: 1-based number
+    include_actions: if True, render actions list inside the card; if False, card is summary-only (actions in expander).
+    """
+    priority = (rec.get('priority') or 'Medium').strip()
+    pclass = priority.lower()
+    title = rec.get('title', 'Recommendation')
+    desc = rec.get('description', '')
+    timeline = rec.get('timeline', '')
+    actions = rec.get('actions') or []
+    badge = get_priority_badge_html(priority)
+    actions_html = ''
+    if include_actions and actions:
+        lis = ''.join(f'<li>{a}</li>' for a in actions)
+        actions_html = f'<ul class="rec-actions-list">{lis}</ul>'
+    return f"""
+    <div class="rec-card rec-priority-{pclass}">
+        <div class="rec-card-header">
+            <span class="rec-priority-badge {pclass}">{priority}</span>
+            <span class="rec-title">{index}. {title}</span>
+        </div>
+        <p class="rec-desc">{desc}</p>
+        <p class="rec-timeline">⏱ {timeline}</p>
+        {actions_html}
+    </div>
+    """
 

@@ -11,6 +11,9 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 from utils.mock_stream_generator import MockStreamGenerator
 
+# Default start date for generated test data (30 days of data ends ~Feb 19, 2026)
+DEMO_START_DATE = datetime(2026, 1, 20, 0, 0, 0)
+
 
 class MockBatchGenerator:
     """
@@ -42,7 +45,7 @@ class MockBatchGenerator:
             Path to generated file
         """
         hours = duration_days * 24
-        start_time = datetime(2025, 1, 1, 0, 0, 0)
+        start_time = DEMO_START_DATE
         
         if output_path is None:
             scenario_names = {
@@ -110,8 +113,10 @@ class MockBatchGenerator:
             df = self._inject_anomaly_period(df, anomaly_start, 8, severity='medium')
         
         elif scenario == 'high_severity':
-            anomaly_start = hours // 2
-            df = self._inject_anomaly_period(df, anomaly_start, 10, severity='high')
+            # Place anomaly at end of file so batch severity and "recent" windows see it
+            anomaly_duration = 12
+            anomaly_start = max(0, hours - anomaly_duration - 24)  # last ~36h: 24 normal then 12 anomaly
+            df = self._inject_anomaly_period(df, anomaly_start, anomaly_duration, severity='high')
         
         elif scenario == 'critical_severity':
             anomaly_start = hours // 2
@@ -232,7 +237,7 @@ class MockBatchGenerator:
         # Also generate a mixed scenarios file (90 days)
         print("\nGenerating mixed scenarios file (90 days)...")
         hours = 90 * 24
-        start_time = datetime(2025, 1, 1, 0, 0, 0)
+        start_time = DEMO_START_DATE
         df = self.stream_gen.generate_hourly_data(hours=hours, anomaly_probability=0.0, start_time=start_time)
         
         # Add various anomalies throughout
@@ -252,4 +257,35 @@ class MockBatchGenerator:
         print(f"✓ Saved: {output_file}")
         
         print(f"\n✓ Generated all test files in {output_dir}/")
+
+    def generate_demo_test_files(self, output_dir='test_data', duration_days=30):
+        """
+        Generate only the 3 demo test files used in DEMO_GUIDE:
+        normal_30days.csv, early_warning_30days.csv, high_severity_30days.csv
+        """
+        output_path = Path(output_dir)
+        output_path.mkdir(exist_ok=True)
+        demo_scenarios = [
+            ('normal', 'normal_30days.csv'),
+            ('early_warning', 'early_warning_30days.csv'),
+            ('high_severity', 'high_severity_30days.csv'),
+        ]
+        print(f"\n=== Generating {len(demo_scenarios)} demo test files ===")
+        for scenario, filename in demo_scenarios:
+            self.generate_test_file(scenario, duration_days, output_path / filename)
+        print(f"\n✓ Generated demo test files in {output_dir}/")
+
+
+if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser(description='Generate test CSV files for anomaly detection demos.')
+    parser.add_argument('--demo', action='store_true', help='Generate only 3 demo files: normal, early_warning, high_severity')
+    parser.add_argument('--output-dir', default='test_data', help='Output directory')
+    parser.add_argument('--days', type=int, default=30, help='Days of data per file')
+    args = parser.parse_args()
+    generator = MockBatchGenerator()
+    if args.demo:
+        generator.generate_demo_test_files(output_dir=args.output_dir, duration_days=args.days)
+    else:
+        generator.generate_all_test_files(output_dir=args.output_dir, duration_days=args.days)
 

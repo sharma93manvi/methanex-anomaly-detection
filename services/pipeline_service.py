@@ -136,13 +136,24 @@ def process_pipeline_with_progress(file_path, progress_callback=None):
     if progress_callback:
         progress_callback(5, "Combining Detection Methods", 63, "Combined detection complete")
     
-    # Step 6: Notifications (63-70%)
+    # Step 6: Notifications - Two-tier system (63-70%)
+    # Tier 1: Early Warning when anomaly first detected
+    # Tier 2: Priority Escalation when anomaly persists 3+ hours
     if progress_callback:
-        progress_callback(6, "Notification System", 63, "Processing notifications...")
+        progress_callback(6, "Notification System", 63, "Processing two-tier notifications...")
     
     notification_manager = NotificationManager()
     notification_manager.process_anomaly_detection(df_asset1_combined, 'Asset 1')
     notification_manager.process_anomaly_detection(df_asset2_combined, 'Asset 2')
+    
+    # Capture notification summary and list for UI (e.g. Streamlit)
+    notification_summary = notification_manager.generate_batch_summary() if notification_manager.enabled else ""
+    results['notifications'] = {
+        'summary': notification_summary,
+        'list': list(notification_manager.notifications),  # All EARLY_WARNING and PRIORITY_ESCALATION events
+        'early_warning_count': sum(1 for n in notification_manager.notifications if n.get('type') == 'EARLY_WARNING'),
+        'escalation_count': sum(1 for n in notification_manager.notifications if n.get('type') == 'PRIORITY_ESCALATION'),
+    }
     
     if progress_callback:
         progress_callback(6, "Notification System", 70, "Notifications processed")

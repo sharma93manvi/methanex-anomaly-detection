@@ -6,3 +6,7 @@ headless = true
 [browser]
 serverAddress = "gcp-team4.themanvisharma.com"
 serverPort = 80
+
+# Default to light theme
+[theme]
+base = "light"

@@ -449,12 +449,29 @@ def detect_anomalies_ml(df, asset='Asset 1'):
     ensemble_score = ensemble_scoring(df, scores_dict)
     df['anomaly_score_ml'] = ensemble_score
     
-    # Flag anomalies (top percentile)
-    threshold = np.percentile(ensemble_score, ANOMALY_SCORE_PERCENTILE)
+    # 70-30 temporal split: threshold from training 70% only, then apply to full series
+    split_idx = int(len(df) * TRAIN_SPLIT)
+    train_scores = ensemble_score[:split_idx]
+    threshold = np.percentile(train_scores, ANOMALY_SCORE_PERCENTILE)
     df['anomaly_ml'] = ensemble_score >= threshold
     
-    print(f"✓ Ensemble ML detection")
-    print(f"  Detected {df['anomaly_ml'].sum()} anomalies (threshold: {threshold:.3f})")
+    # Mark holdout (test) set for reporting
+    df['is_holdout'] = np.arange(len(df)) >= split_idx
+    
+    # Full-series metrics
+    n_full = len(df)
+    n_anom_full = int(df['anomaly_ml'].sum())
+    pct_full = (n_anom_full / n_full) * 100 if n_full else 0
+    
+    # Holdout (last 30%) metrics
+    holdout = df['is_holdout']
+    n_holdout = holdout.sum()
+    n_anom_holdout = int(df.loc[holdout, 'anomaly_ml'].sum())
+    pct_holdout = (n_anom_holdout / n_holdout) * 100 if n_holdout else 0
+    
+    print(f"✓ Ensemble ML detection (threshold from training 70% only: {threshold:.3f})")
+    print(f"  Full series: {n_anom_full} anomalies ({pct_full:.2f}% of {n_full} records)")
+    print(f"  Holdout (last 30%): {n_anom_holdout} anomalies ({pct_holdout:.2f}% of {n_holdout} records)")
     
     return df
 

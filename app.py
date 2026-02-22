@@ -53,29 +53,22 @@ if not st.session_state.demo_data_loaded:
     except Exception:
         pass
 
-# Top Navigation Bar
-col_nav1, col_nav2, col_nav3 = st.columns([3, 1, 1])
-
-with col_nav1:
-    st.markdown("### Methanex Anomaly Detection System")
-
-with col_nav2:
-    if st.button("Upload & Analyze", key="nav_upload", use_container_width=True, type="primary"):
-        st.switch_page("pages/Upload_Analysis.py")
-
-with col_nav3:
-    if st.button("Mock Stream", key="nav_stream", use_container_width=True, type="secondary"):
-        st.switch_page("pages/Mock_Stream.py")
-
-st.markdown("---")
-
-# Hero Section
-st.markdown(f"""
-<div class="hero-section fade-in">
+# Hero Section (badge, title, subtitle) with nav buttons inside the blue box
+st.markdown("""
+<div id="hero-block" class="hero-section fade-in">
+    <div class="hero-badge">Google Cloud · Data & AI Hackathon · Team 4</div>
     <div class="hero-title">Early Detection of Process Excursions</div>
-    <div class="hero-subtitle">AI-Powered Anomaly Detection System for Industrial Sensor Data</div>
+    <div class="hero-subtitle">AI-Powered Anomaly Detection System developed for Methanex</div>
 </div>
 """, unsafe_allow_html=True)
+
+col_upload, col_stream = st.columns(2)
+with col_upload:
+    if st.button("Upload & Analyze", key="nav_upload", use_container_width=True, type="primary"):
+        st.switch_page("pages/Upload_Analysis.py")
+with col_stream:
+    if st.button("Mock Stream", key="nav_stream", use_container_width=True, type="secondary"):
+        st.switch_page("pages/Mock_Stream.py")
 
 # Main Options - Two Large Cards
 st.markdown("<br>", unsafe_allow_html=True)

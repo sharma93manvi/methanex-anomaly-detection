@@ -54,6 +54,31 @@ def get_css_theme():
         background-color: {COLORS['background']};
     }}
     
+    /* Hide Streamlit default UI: footer (Made with Streamlit icon), main menu, header decoration bar/ribbon */
+    footer {{ visibility: hidden; display: none !important; }}
+    [data-testid="stFooter"] {{ visibility: hidden; display: none !important; }}
+    /* Hide footer link/logo (blue U-shaped icon at bottom) */
+    footer a {{ display: none !important; }}
+    footer svg {{ display: none !important; }}
+    a[href*="streamlit.io"] {{ display: none !important; }}
+    /* Block that wraps the footer icon in some Streamlit versions */
+    [data-testid="stAppViewContainer"] > footer {{ display: none !important; }}
+    /* Toolbar / bottom strip (Streamlit 1.38+ deploy or menu) */
+    [data-testid="stBottom"] {{ display: none !important; }}
+    [data-testid="stToolbar"] {{ display: none !important; }}
+    section[data-testid="stSidebar"] ~ * footer {{ display: none !important; }}
+    /* Iframe resizer anchor (blue U-shaped icon at bottom) */
+    [data-testid="stAppIframeResizerAnchor"] {{ display: none !important; visibility: hidden !important; }}
+    
+    /* Chat input bar at bottom: use light background instead of blue ribbon */
+    [data-testid="stBottomBlockContainer"] {{ background: {COLORS['background']} !important; border-top: 1px solid {COLORS['border']} !important; }}
+    .stChatInputContainer, .stChatInputContainer > div {{ background: {COLORS['card']} !important; }}
+    [data-testid="stChatInput"] {{ background: {COLORS['card']} !important; }}
+    /* Main menu and header */
+    #MainMenu {{ visibility: hidden; display: none !important; }}
+    header {{ visibility: hidden; display: none !important; }}
+    [data-testid="stHeader"] {{ visibility: hidden; display: none !important; }}
+    
     /* Animations */
     @keyframes fadeIn {{
         from {{
@@ -355,12 +380,50 @@ def get_css_theme():
         opacity: 0.9;
     }}
     
+    .hero-badge {{
+        display: inline-block;
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+        padding: 0.35rem 0.9rem;
+        border-radius: 9999px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        margin-bottom: 1rem;
+    }}
+    
+    /* Buttons row immediately after hero: visually inside the blue box */
+    .hero-section {{
+        padding-bottom: 4rem;
+        margin-bottom: 0;
+        border-radius: 12px 12px 0 0;
+    }}
+    div:has(#hero-block) + div {{
+        background: linear-gradient(135deg, {COLORS['primary']} 0%, {COLORS['secondary']} 100%);
+        margin-top: -3rem;
+        margin-bottom: 2rem;
+        padding: 0.75rem 1rem 1.25rem;
+        border-radius: 0 0 12px 12px;
+    }}
+    div:has(#hero-block) + div .stButton > button {{
+        background-color: rgba(255, 255, 255, 0.95) !important;
+        color: {COLORS['primary']} !important;
+    }}
+    
     /* ========== Mobile & cross-device responsive ========== */
     /* Prevent horizontal overflow on all devices */
     html, body, .stApp, [data-testid="stAppViewContainer"], .main .block-container {{
-        max-width: 100vw;
+        max-width: 100%;
         overflow-x: hidden;
         box-sizing: border-box;
+    }}
+    /* iPhone notch / safe areas */
+    .main .block-container {{
+        padding-left: max(1rem, env(safe-area-inset-left));
+        padding-right: max(1rem, env(safe-area-inset-right));
+    }}
+    body {{
+        padding-bottom: env(safe-area-inset-bottom);
     }}
     /* Allow long text and alerts to wrap on small screens */
     .methanex-alert, .stMarkdown p, .stMarkdown li {{
@@ -374,31 +437,48 @@ def get_css_theme():
     .stApp {{
         -webkit-overflow-scrolling: touch;
     }}
+    /* Prevent iOS zoom on input focus (16px+ avoids auto-zoom) */
+    input[type="text"], input[type="number"], textarea, [data-testid="stTextInput"] input {{
+        font-size: 16px !important;
+    }}
     /* Stack Streamlit columns on tablet and mobile */
     @media (max-width: 1024px) {{
         [data-testid="column"] {{
             min-width: 100% !important;
             flex: 1 1 100% !important;
         }}
-        /* Streamlit horizontal block: allow flex wrap */
         [data-testid="stHorizontalBlock"] {{
             flex-wrap: wrap !important;
         }}
     }}
     @media (max-width: 768px) {{
         .main .block-container {{
-            padding-left: 1rem;
-            padding-right: 1rem;
+            padding-left: max(0.75rem, env(safe-area-inset-left));
+            padding-right: max(0.75rem, env(safe-area-inset-right));
             max-width: 100%;
         }}
         .hero-title {{
             font-size: 1.75rem;
+            line-height: 1.2;
         }}
         .hero-subtitle {{
             font-size: 0.95rem;
         }}
         .hero-section {{
             padding: 2rem 1rem;
+            padding-bottom: 3rem;
+        }}
+        .hero-badge {{
+            font-size: 0.75rem;
+            padding: 0.3rem 0.6rem;
+        }}
+        div:has(#hero-block) + div {{
+            margin-top: -2.5rem;
+            padding: 0.5rem 0.75rem 1rem;
+        }}
+        div:has(#hero-block) + div .stButton > button {{
+            min-height: 44px;
+            font-size: 0.95rem;
         }}
         .methanex-card {{
             padding: 1.25rem;
@@ -406,21 +486,37 @@ def get_css_theme():
         .methanex-card.methanex-card-hero {{
             padding: 2rem 1rem;
         }}
-        /* Touch-friendly tap targets (min 44px) */
         button, [role="button"], .stButton > button {{
             min-height: 44px;
             min-width: 44px;
         }}
+        .rec-card {{
+            padding: 1rem;
+        }}
     }}
     @media (max-width: 480px) {{
+        .main .block-container {{
+            padding-left: max(0.5rem, env(safe-area-inset-left));
+            padding-right: max(0.5rem, env(safe-area-inset-right));
+        }}
         .hero-title {{
-            font-size: 1.4rem;
+            font-size: 1.35rem;
+            line-height: 1.25;
         }}
         .hero-subtitle {{
             font-size: 0.875rem;
         }}
         .hero-section {{
-            padding: 1.5rem 0.75rem;
+            padding: 1.25rem 0.75rem;
+            padding-bottom: 2.5rem;
+        }}
+        .hero-badge {{
+            font-size: 0.7rem;
+            padding: 0.25rem 0.5rem;
+        }}
+        div:has(#hero-block) + div {{
+            margin-top: -2rem;
+            padding: 0.5rem 0.5rem 0.75rem;
         }}
         .methanex-card {{
             padding: 1rem;
@@ -433,6 +529,22 @@ def get_css_theme():
             font-size: 0.8rem;
         }}
     }}
+    /* Very small phones (e.g. iPhone SE 320px) */
+    @media (max-width: 360px) {{
+        .hero-title {{
+            font-size: 1.2rem;
+        }}
+        .hero-subtitle {{
+            font-size: 0.8rem;
+        }}
+        .hero-section {{
+            padding: 1rem 0.5rem;
+            padding-bottom: 2rem;
+        }}
+        div:has(#hero-block) + div .stButton > button {{
+            font-size: 0.875rem;
+        }}
+    }}
     /* Scrollable data/table containers on small screens */
     @media (max-width: 768px) {{
         [data-testid="stDataFrame"], [data-testid="stDataFrameResizable"] {{
@@ -442,6 +554,28 @@ def get_css_theme():
         .stPlotlyChart {{
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
+        }}
+    }}
+    /* Chat and forms: full width, touch-friendly on mobile */
+    @media (max-width: 768px) {{
+        [data-testid="stForm"] {{
+            width: 100%;
+        }}
+        [data-testid="stChatMessage"] {{
+            max-width: 100%;
+        }}
+    }}
+    /* Prevent charts and iframes from overflowing on any device */
+    .stPlotlyChart, .js-plotly-plot, [data-testid="stPlotlyChart"] {{
+        max-width: 100% !important;
+    }}
+    .element-container {{
+        max-width: 100%;
+    }}
+    /* Selectbox and number input full width on small screens */
+    @media (max-width: 768px) {{
+        [data-testid="stSelectbox"], [data-testid="stNumberInput"] {{
+            width: 100%;
         }}
     }}
     </style>

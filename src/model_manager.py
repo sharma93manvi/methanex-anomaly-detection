@@ -122,32 +122,38 @@ class ModelManager:
         
     def load_models(self):
         """
-        Load saved models from disk
+        Load saved models from disk.
+        Supports two formats:
+        1. train_models.py format: metadata.pkl + Asset_1/Asset_2 *.pkl
+        2. Notebook/ml_detection format: asset_1/asset_2 *_isolation_forest*.joblib
         """
         print("\n=== Loading Models ===")
         
-        # Load metadata
+        # Try format 1: metadata.pkl + .pkl files (from train_models.py)
         metadata_path = self.model_dir / "metadata.pkl"
-        if not metadata_path.exists():
-            print("  ⚠ No saved models found. Models need to be trained first.")
-            return False
+        if metadata_path.exists():
+            return self._load_models_pkl(metadata_path)
         
+        # Try format 2: .joblib files (from notebook / ml_detection pipeline)
+        if self._load_models_joblib():
+            return True
+        
+        print("  ⚠ No saved models found. Models need to be trained first.")
+        return False
+    
+    def _load_models_pkl(self, metadata_path):
+        """Load models saved by train_models.py (metadata.pkl + .pkl)."""
         with open(metadata_path, 'rb') as f:
             metadata = pickle.load(f)
         self.feature_cols = metadata.get('feature_cols', {})
         print(f"  ✓ Loaded metadata (version: {metadata.get('model_version', 'unknown')})")
         
-        # Load models for each asset
         for asset_name in ['Asset_1', 'Asset_2']:
             asset_display = asset_name.replace('_', ' ')
-            
-            # Load scaler
             scaler_path = self.model_dir / f"{asset_name}_scaler.pkl"
             if scaler_path.exists():
                 self.scalers[asset_display] = joblib.load(scaler_path)
                 print(f"  ✓ Loaded scaler for {asset_display}")
-            
-            # Load Isolation Forest
             model_path = self.model_dir / f"{asset_name}_isolation_forest.pkl"
             if model_path.exists():
                 iso_forest = joblib.load(model_path)
@@ -156,7 +162,6 @@ class ModelManager:
                 self.models[asset_display]['isolation_forest'] = iso_forest
                 print(f"  ✓ Loaded Isolation Forest for {asset_display}")
         
-        # Load sensor_rankings and early_detection_history from disk
         for asset_name in ['Asset_1', 'Asset_2']:
             asset_display = asset_name.replace('_', ' ')
             rank_path = self.model_dir / f"{asset_name}_sensor_rankings.pkl"
@@ -171,6 +176,29 @@ class ModelManager:
                 print(f"  ✓ Loaded early detection history for {asset_display}")
         
         return True
+    
+    def _load_models_joblib(self):
+        """Load models saved by notebook/ml_detection (asset_*_isolation_forest*.joblib)."""
+        loaded_any = False
+        for asset_key, asset_display in [('asset_1', 'Asset 1'), ('asset_2', 'Asset 2')]:
+            model_path = self.model_dir / f"{asset_key}_isolation_forest.joblib"
+            scaler_path = self.model_dir / f"{asset_key}_isolation_forest_scaler.joblib"
+            features_path = self.model_dir / f"{asset_key}_isolation_forest_features.joblib"
+            if not model_path.exists() or not scaler_path.exists():
+                continue
+            iso_forest = joblib.load(model_path)
+            scaler = joblib.load(scaler_path)
+            if asset_display not in self.models:
+                self.models[asset_display] = {}
+            self.models[asset_display]['isolation_forest'] = iso_forest
+            self.scalers[asset_display] = scaler
+            if features_path.exists():
+                self.feature_cols[asset_display] = joblib.load(features_path)
+            else:
+                self.feature_cols[asset_display] = []
+            print(f"  ✓ Loaded Isolation Forest (joblib) for {asset_display}")
+            loaded_any = True
+        return loaded_any
     
     def predict_on_new_data(self, df_new, asset_name='Asset 1'):
         """

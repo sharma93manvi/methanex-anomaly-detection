@@ -43,29 +43,22 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Top Navigation
-col_nav1, col_nav2, col_nav3 = st.columns([3, 1, 1])
-
-with col_nav1:
-    st.markdown("### Methanex Anomaly Detection System")
-
-with col_nav2:
-    if st.button("Home", key="nav_home", use_container_width=True):
-        st.switch_page("app.py")
-
-with col_nav3:
-    if st.button("Mock Stream", key="nav_stream", use_container_width=True):
-        st.switch_page("pages/Mock_Stream.py")
-
-st.markdown("---")
-
-# Hero Section (consistent across app)
+# Hero Section with nav buttons inside the blue box
 st.markdown("""
-<div class="hero-section fade-in">
+<div id="hero-block" class="hero-section fade-in">
+    <div class="hero-badge">Google Cloud · Data & AI Hackathon · Team 4</div>
     <div class="hero-title">Early Detection of Process Excursions</div>
-    <div class="hero-subtitle">AI-Powered Anomaly Detection System for Industrial Sensor Data</div>
+    <div class="hero-subtitle">AI-Powered Anomaly Detection System developed for Methanex</div>
 </div>
 """, unsafe_allow_html=True)
+
+col_home, col_stream = st.columns(2)
+with col_home:
+    if st.button("Home", key="nav_home", use_container_width=True):
+        st.switch_page("app.py")
+with col_stream:
+    if st.button("Mock Stream", key="nav_stream", use_container_width=True):
+        st.switch_page("pages/Mock_Stream.py")
 
 st.markdown("<br>", unsafe_allow_html=True)
 st.markdown("### Upload Sensor Data & Analysis")
@@ -83,7 +76,7 @@ if 'agent_chat_messages' not in st.session_state:
 
 
 def _render_agent_chat(key_suffix="upload"):
-    """Render the Chat with the Agent section (shared by both tabs). key_suffix must be unique per tab."""
+    """Render the Chat with the Agent section (in-page form, same design as Mock Stream). key_suffix must be unique per tab."""
     api_key = get_api_key()
     if not api_key:
         st.info(
@@ -94,7 +87,16 @@ def _render_agent_chat(key_suffix="upload"):
     for msg in st.session_state.agent_chat_messages:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
-    if prompt := st.chat_input("Ask about model outputs or the detection system...", key=f"agent_chat_input_{key_suffix}"):
+    # In-page input (no st.chat_input = no blue ribbon at bottom), same as Mock Stream
+    with st.form(f"upload_chat_form_{key_suffix}", clear_on_submit=True):
+        prompt = st.text_input(
+            "Ask about model outputs or the detection system",
+            key=f"upload_chat_input_{key_suffix}",
+            placeholder="Type your question here..."
+        )
+        submitted = st.form_submit_button("Send")
+    if submitted and (prompt or "").strip():
+        prompt = prompt.strip()
         st.session_state.agent_chat_messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
             st.markdown(prompt)

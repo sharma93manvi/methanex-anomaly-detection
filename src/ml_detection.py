@@ -34,8 +34,10 @@ Decision: Isolation Forest + Statistical Methods provides the best balance of:
 - Maintainability (easier to debug and tune)
 """
 
+import os
 import pandas as pd
 import numpy as np
+import joblib
 from sklearn.ensemble import IsolationForest
 from sklearn.preprocessing import StandardScaler
 from src.config import (
@@ -92,13 +94,15 @@ def prepare_ml_features(df):
     return X, valid_cols
 
 
-def isolation_forest_detection(df):
+def isolation_forest_detection(df, save_dir=None, asset_safe=None):
     """
     Detect anomalies using Isolation Forest
     Now includes unplanned outages in training data
     
     Args:
         df: DataFrame with engineered features (includes operating periods and outages)
+        save_dir: Optional directory path to save the trained model and scaler
+        asset_safe: Optional asset identifier for filenames (e.g. 'asset_1')
         
     Returns:
         Array of anomaly scores (0-1, where 1 = more anomalous)
@@ -130,6 +134,13 @@ def isolation_forest_detection(df):
         n_estimators=100
     )
     iso_forest.fit(X_train_scaled)
+    
+    if save_dir and asset_safe:
+        os.makedirs(save_dir, exist_ok=True)
+        joblib.dump(iso_forest, os.path.join(save_dir, f"{asset_safe}_isolation_forest.joblib"))
+        joblib.dump(scaler, os.path.join(save_dir, f"{asset_safe}_isolation_forest_scaler.joblib"))
+        joblib.dump(feature_cols, os.path.join(save_dir, f"{asset_safe}_isolation_forest_features.joblib"))
+        print(f"    Saved model and scaler to {save_dir}/")
     
     # Get anomaly scores (negative scores = anomalies, more negative = more anomalous)
     scores = iso_forest.score_samples(X_scaled)
@@ -167,13 +178,15 @@ def build_autoencoder(input_dim, encoding_dim=32):
     return autoencoder
 
 
-def autoencoder_detection(df):
+def autoencoder_detection(df, save_dir=None, asset_safe=None):
     """
     Detect anomalies using Autoencoder
     Now includes unplanned outages in training data
     
     Args:
         df: DataFrame with engineered features (includes operating periods and outages)
+        save_dir: Optional directory path to save the trained model and scaler
+        asset_safe: Optional asset identifier for filenames (e.g. 'asset_1')
         
     Returns:
         Array of anomaly scores (0-1, where 1 = more anomalous)
@@ -215,6 +228,13 @@ def autoencoder_detection(df):
         validation_split=0.2
     )
     
+    if save_dir and asset_safe:
+        os.makedirs(save_dir, exist_ok=True)
+        autoencoder.save(os.path.join(save_dir, f"{asset_safe}_autoencoder"))
+        joblib.dump(scaler, os.path.join(save_dir, f"{asset_safe}_autoencoder_scaler.joblib"))
+        joblib.dump(feature_cols, os.path.join(save_dir, f"{asset_safe}_autoencoder_features.joblib"))
+        print(f"    Saved model and scaler to {save_dir}/")
+    
     # Calculate reconstruction error
     X_pred = autoencoder.predict(X_scaled, verbose=0)
     reconstruction_error = np.mean((X_scaled - X_pred) ** 2, axis=1)
@@ -249,7 +269,7 @@ def build_lstm_model(input_shape, n_features):
     return model
 
 
-def lstm_detection(df, sequence_length=24):
+def lstm_detection(df, sequence_length=24, save_dir=None, asset_safe=None):
     """
     Detect anomalies using LSTM forecasting
     Now includes unplanned outages in training data
@@ -257,6 +277,8 @@ def lstm_detection(df, sequence_length=24):
     Args:
         df: DataFrame with engineered features (includes operating periods and outages)
         sequence_length: Length of input sequences (hours)
+        save_dir: Optional directory path to save the trained model and scaler
+        asset_safe: Optional asset identifier for filenames (e.g. 'asset_1')
         
     Returns:
         Array of anomaly scores (0-1, where 1 = more anomalous)
@@ -317,6 +339,13 @@ def lstm_detection(df, sequence_length=24):
         verbose=0,
         validation_split=0.2
     )
+    
+    if save_dir and asset_safe:
+        os.makedirs(save_dir, exist_ok=True)
+        lstm_model.save(os.path.join(save_dir, f"{asset_safe}_lstm"))
+        joblib.dump(scaler, os.path.join(save_dir, f"{asset_safe}_lstm_scaler.joblib"))
+        joblib.dump({"feature_cols": feature_cols, "sequence_length": sequence_length}, os.path.join(save_dir, f"{asset_safe}_lstm_metadata.joblib"))
+        print(f"    Saved model and scaler to {save_dir}/")
     
     # Predict and calculate residuals
     X_all_flat = sequences.reshape(-1, n_features)
@@ -385,7 +414,7 @@ def ensemble_scoring(df, scores_dict):
     return ensemble_score
 
 
-def detect_anomalies_ml(df, asset='Asset 1'):
+def detect_anomalies_ml(df, asset='Asset 1', save_models_dir=None):
     """
     Run ML-based anomaly detection methods
     
@@ -395,6 +424,8 @@ def detect_anomalies_ml(df, asset='Asset 1'):
     Args:
         df: DataFrame with engineered features
         asset: 'Asset 1' or 'Asset 2'
+        save_models_dir: Optional path to directory to save trained models (e.g. 'models').
+                         Saves Isolation Forest, Autoencoder, and LSTM (when run) per asset.
         
     Returns:
         DataFrame with ML anomaly scores and flags
@@ -406,12 +437,17 @@ def detect_anomalies_ml(df, asset='Asset 1'):
         print("      Isolation Forest + Statistical methods provide comprehensive detection")
     
     df = df.copy()
+    save_dir = None
+    asset_safe = None
+    if save_models_dir:
+        save_dir = os.path.abspath(save_models_dir)
+        asset_safe = asset.lower().replace(" ", "_")
     
     scores_dict = {}
     
     # 1. Isolation Forest (Primary Method - Always runs)
     try:
-        iso_scores = isolation_forest_detection(df)
+        iso_scores = isolation_forest_detection(df, save_dir=save_dir, asset_safe=asset_safe)
         df['anomaly_score_isolation_forest'] = iso_scores
         scores_dict['isolation_forest'] = iso_scores
         print("✓ Isolation Forest (Primary)")
@@ -422,7 +458,7 @@ def detect_anomalies_ml(df, asset='Asset 1'):
     # 2. Autoencoder (Optional - Experimental, requires TensorFlow)
     if TENSORFLOW_AVAILABLE:
         try:
-            ae_scores = autoencoder_detection(df)
+            ae_scores = autoencoder_detection(df, save_dir=save_dir, asset_safe=asset_safe)
             df['anomaly_score_autoencoder'] = ae_scores
             scores_dict['autoencoder'] = ae_scores
             print("✓ Autoencoder (Optional)")
@@ -435,7 +471,7 @@ def detect_anomalies_ml(df, asset='Asset 1'):
     # 3. LSTM (Optional - Experimental, requires TensorFlow)
     if TENSORFLOW_AVAILABLE:
         try:
-            lstm_scores = lstm_detection(df)
+            lstm_scores = lstm_detection(df, save_dir=save_dir, asset_safe=asset_safe)
             df['anomaly_score_lstm'] = lstm_scores
             scores_dict['lstm'] = lstm_scores
             print("✓ LSTM (Optional)")

@@ -10,3 +10,7 @@ serverPort = 80
 # Default to light theme
 [theme]
 base = "light"
+
+# Hide toolbar icons (e.g. deploy button) that can appear at bottom on localhost
+[client]
+toolbarMode = "viewer"

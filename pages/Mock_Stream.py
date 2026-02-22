@@ -44,29 +44,22 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Top Navigation
-col_nav1, col_nav2, col_nav3 = st.columns([3, 1, 1])
-
-with col_nav1:
-    st.markdown("### Methanex Anomaly Detection System")
-
-with col_nav2:
-    if st.button("Home", key="nav_home", use_container_width=True):
-        st.switch_page("app.py")
-
-with col_nav3:
-    if st.button("Upload & Analyze", key="nav_upload", use_container_width=True):
-        st.switch_page("pages/Upload_Analysis.py")
-
-st.markdown("---")
-
-# Hero Section (consistent across app)
+# Hero Section with nav buttons inside the blue box
 st.markdown("""
-<div class="hero-section fade-in">
+<div id="hero-block" class="hero-section fade-in">
+    <div class="hero-badge">Google Cloud · Data & AI Hackathon · Team 4</div>
     <div class="hero-title">Early Detection of Process Excursions</div>
-    <div class="hero-subtitle">AI-Powered Anomaly Detection System for Industrial Sensor Data</div>
+    <div class="hero-subtitle">AI-Powered Anomaly Detection System developed for Methanex</div>
 </div>
 """, unsafe_allow_html=True)
+
+col_home, col_upload = st.columns(2)
+with col_home:
+    if st.button("Home", key="nav_home", use_container_width=True):
+        st.switch_page("app.py")
+with col_upload:
+    if st.button("Upload & Analyze", key="nav_upload", use_container_width=True):
+        st.switch_page("pages/Upload_Analysis.py")
 
 st.markdown("<br>", unsafe_allow_html=True)
 st.markdown("### Mock Stream - Real-Time Sensor Data")
@@ -103,7 +96,7 @@ _project_root = Path(__file__).resolve().parent.parent
 
 
 def _render_agent_chat_mock():
-    """Render the Chat with the Agent section on Mock Stream (uses mock-specific session state)."""
+    """Render the Chat with the Agent section on Mock Stream (in-page form, no fixed blue bar)."""
     api_key = get_api_key()
     if not api_key:
         st.info(
@@ -111,10 +104,20 @@ def _render_agent_chat_mock():
             "Streamlit secrets (e.g. `.streamlit/secrets.toml`)."
         )
         return
+    # Chat messages in a compact, in-page layout
     for msg in st.session_state.agent_chat_messages_mock:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
-    if prompt := st.chat_input("Ask about the stream analysis or get recommendations...", key="agent_chat_input_mock"):
+    # In-page input (no st.chat_input = no blue ribbon at bottom)
+    with st.form("mock_stream_chat_form", clear_on_submit=True):
+        prompt = st.text_input(
+            "Ask about the stream analysis or get recommendations",
+            key="mock_chat_input",
+            placeholder="Type your question here..."
+        )
+        submitted = st.form_submit_button("Send")
+    if submitted and (prompt or "").strip():
+        prompt = prompt.strip()
         st.session_state.agent_chat_messages_mock.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
             st.markdown(prompt)
